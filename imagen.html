@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
+
+    <title>Convoluciones</title>
+  </head>
+  <body>
+
+    <div class="container-fluid mt-1">
+        <h1>Filtros de Convoluci&oacute;n en im&aacute;genes</h1>
+
+        <div class="alert alert-light">
+            Puedes usar este sitio para probar algunos filtros de convoluci&oacute;n sobre una imagen que selecciones. Todo se hace en tu explorador y no se sube la imagen a ning&uacute;n servidor ;)<br/>
+            Este sitio sirve como apoyo para el video "Reconocimiento de im&aacute;genes con IA - 01 - Convoluciones y filtros" del canal <a href="http://www.youtube.com/channel/UCm9QZ70KuIVShztZ7HmE4NQ">Ringa Tech</a><br/>
+            El código fuente está en <a href="https://github.com/ringa-tech/reconocimiento-imagenes-convoluciones-filtros">Github!</a>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-4">
+            <form>
+                <div class="form-group">
+                    <label for="imageInput">Selecciona una imagen</label>
+                    <input type="file" id="imageInput" class="form-control-file" accept = "image/*">
+                </div>
+                <div class="form-group" id="kernelContainer" style="display: none">
+                    <label for="kernel">Filtro a aplicar</label>
+                    <select id="kernel" class="form-control" onchange="cambiarKernel();">
+                        <option value="Identidad" selected>Identidad</option>
+                        <option value="Eje basico">Eje basico</option>
+                        <!--option value="Desenfoque basico mal">Desenfoque b&aacute;sico mal</option--> <!--Desenfoque sin division / 9 -->
+                        <option value="Desenfoque basico">Desenfoque b&aacute;sico</option>
+                        <option value="Desenfoque Gaussiano">Desenfoque Gaussiano</option>
+                        <option value="Enfocar">Enfocar</option>
+                        <option value="Realzar">Realzar</option>
+                        <option value="Sobel horizontal">Sobel horizontal</option>
+                        <option value="Sobel vertical">Sobel vertical</option>
+                        <option value="Sobel horizontal y vertical">Sobel horizontal y vertical</option>
+                        <!--Blur a veces ayuda un poco en el resultado -->
+                        <option value="Sobel HyV con Blur">Sobel HyB con Blur</option>
+                        <!-- TH (Threshold) para ignorar pixeles casi negros, haciendo mas nitido el resultado-->
+                        <option value="Sobel HyV con Blur y TH">Sobel HyB con Blur y TH</option>
+                        <option value="Sobel colorizado">Sobel colorizado</option>
+                        <option value="Sobel colorizado con Blur">Sobel colorizado con Blur</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 text-center">
+            <canvas id="canvas" width="600" height="0" style="display:none;"></canvas>
+            <canvas id="resultado" width="600" height="0" style="display:none; border:solid 1px #ddd;background-color:black;"></canvas>
+        </div>
+
+        <canvas id="staging" width="600" height="0" style="display: none"></canvas>
+        <canvas id="oculto" width="600" height="0" style="display: none;"></canvas>
+        
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-Piv4xVNRyMGpqkS2by6br4gNJ7DXjqk09RmUpJ8jgGtD7zP9yug3goQfGII0yAns" crossorigin="anonymous"></script>
+
+    <script type="text/javascript" src="vision.js"></script>
+
+    <script type="text/javascript">
+
+        var imgInput = document.getElementById('imageInput');
+        //Ancho topado a 600px, se puede modificar
+        var maxWidth = 600;
+        
+        imgInput.addEventListener('change', function(e) {
+            if(e.target.files) {
+                let imageFile = e.target.files[0];
+                var reader = new FileReader();
+                reader.readAsDataURL(imageFile);
+                reader.onloadend = function (e) {
+                    var myImage = new Image();
+                    myImage.src = e.target.result;
+                    myImage.onload = function(ev) {
+
+                        var stagingCanvas = document.getElementById("staging");
+                        var stagingCtx = stagingCanvas.getContext("2d");
+
+                        var width = 0;
+                        var height = 0;
+
+                        if (myImage.width < maxWidth) {
+                            width = myImage.width;
+                            height = myImage.height;
+                        } else {
+                            width = maxWidth;
+                            height = (maxWidth / myImage.width) * myImage.height;
+                        }
+
+                        stagingCanvas.width = width;
+                        stagingCanvas.height = height;
+                      
+                        stagingCtx.drawImage(myImage,0,0, stagingCanvas.width, stagingCanvas.height); // Draws the image on canvas
+                        let imgData = stagingCanvas.toDataURL("image/jpeg",0.75); // Assigns image base64 string in jpeg format to a variable
+
+                        var canvas1 = document.getElementById("canvas");
+                        var ctx1 = canvas1.getContext("2d");
+
+                        var canvas2 = document.getElementById("resultado");
+
+                        var canvas = document.getElementsByTagName("canvas");
+                        for (var c=0; c < canvas.length; c++) {
+                            canvas[c].width = width;
+                            canvas[c].height = height;
+                        }
+
+                        canvas1.style.display="inline-block";
+                        canvas2.style.display="inline-block";
+                        document.getElementById("kernelContainer").style.display="block";
+
+                        ctx1.drawImage(myImage, 0, 0, myImage.width, myImage.height, 0, 0, width, height);
+                        convertirAGrises(canvas1);
+                        cambiarKernel();
+                    }
+                }
+            }
+        });
+
+        //Funcion simple para pasar una imagen a escala de grises
+        //No lo hace con funciones de luminosidad, etc. Solo pasa todo a gris y ya
+        function convertirAGrises(canvas) {
+            var ctx = canvas.getContext("2d");
+            var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            var pixeles = imgData.data;
+
+            for (var i=0; i < pixeles.length; i+=4) {
+                var r = pixeles[i];
+                var g = pixeles[i+1];
+                var b = pixeles[i+2];
+
+                var gris = (r+g+b)/3;
+
+                pixeles[i] = gris;
+                pixeles[i+1] = gris;
+                pixeles[i+2] = gris;
+                pixeles[i+3] = 255;
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function cambiarKernel() {
+            var val = document.getElementById("kernel").value;
+            var kernel;
+            var divisor;
+            switch (val) {
+                case "Identidad":
+                    kernel = [
+                        [0,0,0],
+                        [0,1,0],
+                        [0,0,0],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Eje basico":
+                    kernel = [
+                        [-1,-1,-1],
+                        [-1, 8,-1],
+                        [-1,-1,-1],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Desenfoque basico mal":
+                    kernel = [
+                        [1,1,1],
+                        [1,1,1],
+                        [1,1,1],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Desenfoque basico":
+                    kernel = [
+                        [1,1,1],
+                        [1,1,1],
+                        [1,1,1],
+                    ];
+                    divisor = 9;
+                    break;
+                case "Desenfoque Gaussiano":
+                    kernel = [
+                        [1, 4, 6, 4, 1],
+                        [4,16,24,16, 4],
+                        [6,24,36,24, 6],
+                        [4,16,24,16, 4],
+                        [1, 4, 6, 4, 1],
+                    ];
+                    divisor = 256;
+                    break;
+                case "Enfocar":
+                    kernel = [
+                        [ 0,-1, 0],
+                        [-1, 5,-1],
+                        [ 0,-1, 0],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Realzar":
+                    kernel = [
+                        [-2,-1, 0],
+                        [-1, 1, 1],
+                        [ 0, 1, 2],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Sobel horizontal":
+                    kernel = [
+                        [-1,-2,-1],
+                        [ 0, 0, 0],
+                        [ 1, 2, 1],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Sobel vertical":
+                    kernel = [
+                        [-1, 0,1],
+                        [-2, 0,2],
+                        [-1, 0,1],
+                    ];
+                    divisor = 1;
+                    break;
+                case "Sobel horizontal y vertical":
+
+                    var canvasFuente = document.getElementById("canvas");
+                    var canvasDestino = document.getElementById("resultado");
+                    convolucionarSobel(canvasFuente, canvasDestino, false, false);
+
+                    return;
+                    break;
+                case "Sobel HyV con Blur":
+
+                    var canvasFuente = document.getElementById("canvas");
+                    var canvasDestino = document.getElementById("resultado");
+                    convolucionarSobel(canvasFuente, canvasDestino, false, true);
+                    return;
+                    break;
+                case "Sobel HyV con Blur y TH":
+                    var canvasFuente = document.getElementById("canvas");
+                    var canvasDestino = document.getElementById("resultado");
+                    convolucionarSobel(canvasFuente, canvasDestino, false, true, 40);
+                    return;
+                    break;
+                case "Sobel colorizado":
+                    var canvasFuente = document.getElementById("canvas");
+                    var canvasDestino = document.getElementById("resultado");
+                    convolucionarSobel(canvasFuente, canvasDestino, true, false);
+
+                    return;
+                    break;  
+                case "Sobel colorizado con Blur":
+                    var canvasFuente = document.getElementById("canvas");
+                    var canvasDestino = document.getElementById("resultado");
+                    convolucionarSobel(canvasFuente, canvasDestino, true, true);
+
+                    return;
+                    break;                  
+                default: console.log("fuck"); return;
+            }
+
+            aplicarKernel(kernel, divisor);
+        }
+
+        function aplicarKernel(kernel, divisor) {
+            var canvas1 = document.getElementById("canvas");
+            var canvas2 = document.getElementById("resultado");
+            convolucionar(canvas1, canvas2, kernel, divisor);
+        }
+    </script>
+  </body>
+</html>
