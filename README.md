@@ -23,3 +23,6 @@ Personalmente lo que yo hice es:
 - En un explorador abrir http://localhost:8000/imagen.html o http://localhost:8000/camara.html
 
 Puedes hacerlo sobre cualquier otro servidor web que quieras como Apache o Nginx o lo que sea, pero eso es lo que personalmente hago.
+
+### ¿Por qué con Javascript?
+La convolución es un algoritmo general y se puede hacer en el lenguaje que gustes. De hecho primero las hice con Python, pero para que fuera fácil compartir el código (y considerando que programadores regularmente ven primero javascript antes que Python) decidí manejarlo así.
