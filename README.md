@@ -5,7 +5,9 @@ Este código fuente sirve como apoyo para el video "Reconocimiento de imágenes 
 
 ### Demo en vivo
 Puedes probar esto en vivo en las siguientes rutas:
+
 [Imagen](https://ringa-tech.com/vision01/imagen.html)
+
 [Camara web](https://ringa-tech.com/vision01/camara.html)
 
 
